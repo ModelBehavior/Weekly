@@ -10,5 +10,8 @@ The data was split into a training and testing set. Repeated 10-fold cross-valid
 
 ![](https://github.com/ModelBehavior/Weekly/blob/main/weekly_image)
 
+
+Added a baysian anova test to see if models are statistically different from one another based on accurcay.
+
 ### Results 
-Using logistic regression as the final model. The accuracy on the test set was 0.5018315, and the area under the roc curve was 0.5206213.
+Using logistic regression as the final model. The accuracy on the test set was 0.5018315, and the area under the roc curve was 0.5206213. This doesn't seem like much, but the stock market is very hard to predict.
