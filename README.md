@@ -1,4 +1,4 @@
-# [Weekly Data Problem 10 ITSL](https://github.com/ModelBehavior/tecator/blob/main/teactor.Rmd)
+# [Weekly Data Problem 10 ITSL](https://github.com/ModelBehavior/Weekly/blob/main/Weekly.Rmd)
 ### Data Description
 This data contains 1,089 weekly returns for 21 years, from the begininning of 1990 to the end of 2010. The predictors are lag 1-5, and volume. The reponse variable is direction (Up or Down).
 
