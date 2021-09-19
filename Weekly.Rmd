@@ -109,6 +109,44 @@ models %>%
   autoplot()
 ```
 
+```{r ttest}
+individual_accuracy <- models %>% 
+  collect_metrics(summarize = FALSE) %>% 
+  filter(.metric == "accuracy")
+
+# Make dataset wider
+accuracy_wider <- individual_accuracy %>% 
+ dplyr::select(wflow_id, .estimate) %>% 
+ pivot_wider(names_from = "wflow_id", values_from = ".estimate") %>% 
+  dplyr::select(-recipe_1_nearest_neighbor,-recipe_2_nearest_neighbor) %>% 
+ unnest()
+
+accuracy_wider %>% 
+  mutate(difference = recipe_1_logistic_reg - recipe_1_discrim_linear)
+
+accuracy_wider %>% 
+  with(t.test(recipe_1_logistic_reg,recipe_1_discrim_linear,paired = TRUE)) %>%
+  tidy() %>% 
+  dplyr::select(estimate, p.value, starts_with("conf")) # No statistically significant difference between the models.
+
+
+
+```
+
+```{r bayesian-anova-test}
+library(tidyposterior)
+library(rstanarm)
+
+anova_acc <- perf_mod(models,
+         metric = "accuracy",
+         prior_intercept = rstanarm::student_t(df = 1),
+         chains = 4,
+         iter = 5000,
+         seed = 1102)
+
+anova_acc %>% autoplot(type="ROPE",size = 0.02)
+```
+
 ```{r}
 # extract logistic model
 fin_model <- models %>% 
