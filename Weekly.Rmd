@@ -1,0 +1,122 @@
+---
+title: "Weekly Data"
+author: Ra'Shawn Howard
+output: pdf_document
+---
+
+# Data
+This data contains 1,089 weekly returns for 21 years, from the begininning of 1990 to the end of 2010.
+```{r setup, include=FALSE}
+library(tidyverse)  # for graphics and wrangling
+library(tidymodels) # for modeling
+
+# Global option for each code chunck
+knitr::opts_chunk$set(echo = FALSE, include = FALSE, warning = FALSE)
+
+# set global plot theme
+theme_set(ggthemes::theme_hc())
+
+# Load Data
+data("Weekly", package = "ISLR")
+head(Weekly)
+
+# split data into training and testing sets
+split <- initial_time_split(Weekly)
+
+train <- training(split)
+```
+
+# EDA
+We can see year and volume are highly correlated, we can look at the relationship in more detail using a scatterplot.
+```{r include=TRUE}
+
+# Numerical Summary
+summary(Weekly)
+
+DataExplorer::plot_bar(Weekly) # not balanced, but not terrible
+
+DataExplorer::plot_histogram(Weekly) # data appears to be normally distributed except for volume and year
+
+DataExplorer::plot_qq(Weekly) # This further shows the normality of the lags
+
+Weekly %>% 
+  dplyr::select(-Direction) %>% 
+  DataExplorer::plot_correlation() #volume and year are highly correlated, this is expected
+
+# Plot of the data with high correlation
+Weekly %>% 
+  ggplot(aes(Year,Volume)) +
+  geom_point(aes(color = Direction)) +
+  geom_smooth(method = "gam", color = "black")
+```
+
+```{r}
+folds <- vfold_cv(train,repeats = 5)
+```
+
+```{r}
+reg_rec <- recipe(Direction~.,data = train) %>% 
+  step_rm(Today,Year)
+
+# recipe for pca
+pca_rec <- recipe(Direction~.,data = train) %>% 
+  step_rm(Today,Year) %>% 
+  step_BoxCox(all_numeric_predictors()) %>% 
+  step_normalize(all_numeric_predictors()) %>% 
+  step_pca(all_numeric_predictors(), threshold = .85)
+
+preproc <- list(reg_rec,pca_rec)
+```
+
+```{r}
+logistic_spec <- logistic_reg() %>% 
+  set_engine("glm")
+
+lda_spec <- discrim::discrim_linear(mode = "classification") %>% 
+  set_engine("MASS")
+
+qda_spec <- discrim::discrim_quad(mode = "classification") %>% 
+  set_engine("MASS")
+
+knn_spec <- nearest_neighbor(mode = "classification", 
+                             neighbors = tune::tune()) %>% 
+  set_engine("kknn")
+
+models <- list(logistic_spec,lda_spec,qda_spec,knn_spec)
+```
+
+We can see that logistic regression and linear discriminate analsis did equally well on this dataset.
+```{r}
+models <- workflow_set(preproc = preproc, models = models,cross = TRUE) # Models crossed with preprocessing methods
+
+models <- models %>% 
+  workflow_map("tune_grid", 
+               seed = 1101, verbose = TRUE,
+               grid = 10, resamples = folds, metrics = metric_set(kap,accuracy,sens,yardstick::spec,ppv,npv),
+               control = control_resamples(save_pred = TRUE, )) # fit models; grid for k in knn model; fit over resamples folds.
+
+models %>% rank_results(rank_metric = "accuracy") # specificity
+
+models %>% 
+  autoplot() 
+
+# roc auc curve Doesnt seem like these models offer any value
+models %>% 
+  collect_predictions() %>% 
+  group_by(model) %>% 
+  mutate(.pred_class = as.numeric(.pred_class)) %>% 
+  roc_curve(truth = Direction, .pred_class) %>% 
+  autoplot()
+```
+
+```{r}
+# extract logistic model
+fin_model <- models %>% 
+  extract_workflow("recipe_1_logistic_reg")
+
+test_res <- last_fit(fin_model,split = split)
+
+test_res %>% 
+  collect_metrics()
+```
+
