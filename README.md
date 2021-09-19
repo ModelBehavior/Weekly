@@ -10,7 +10,7 @@ The data was split into a training and testing set. Repeated 10-fold cross-valid
 
 ![](https://github.com/ModelBehavior/Weekly/blob/main/weekly_image)
 
-
+Update:
 Added a baysian anova test to see if models are statistically different from one another based on accurcay.
 
 ### Results 
